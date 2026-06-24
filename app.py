@@ -623,10 +623,13 @@ st.markdown(
     """
     <style>
     div[data-testid="stMetric"] {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid rgba(128, 128, 128, 0.35);
         border-radius: 8px;
         padding: 12px 16px;
+    }
+    div[data-testid="stMetric"] [data-testid="stMetricLabel"] p,
+    div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+        color: inherit;
     }
     .block-container { padding-top: 2rem; }
     </style>
