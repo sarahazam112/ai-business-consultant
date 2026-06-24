@@ -53,8 +53,7 @@ TIMELINES = ["0-3 months", "3-6 months", "6-12 months", "12+ months"]
 PAGES = [
     "Home",
     "Financial Data Review",
-    "Strategic Brief",
-    "Deliverables",
+    "Strategic Brief & Deliverables",
 ]
 
 
@@ -263,49 +262,30 @@ def render_brief_form(compact: bool = False):
 
 
 def page_home():
-    st.markdown(
-        """
-        Upload financial or operational data for automated review, or describe a
-        strategic question to generate analyst-style memos and deliverables.
-        """
-    )
-
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         with st.container(border=True):
             st.markdown("**Financial Data Review**")
-            st.caption("Upload CSV/Excel → KPIs, trends, AI memo")
-            if st.button("Go to data review", use_container_width=True):
+            if st.button("Financial Data Review", use_container_width=True):
                 st.session_state["nav_page"] = "Financial Data Review"
+                st.session_state["sidebar_nav_page"] = "Financial Data Review"
                 st.rerun()
     with col2:
         with st.container(border=True):
-            st.markdown("**Strategic Brief**")
-            st.caption("Structured intake → consulting report")
-            if st.button("Start a brief", use_container_width=True):
-                st.session_state["nav_page"] = "Strategic Brief"
+            st.markdown("**Strategic Brief & Deliverables**")
+            if st.button("Strategic Brief & Deliverables", use_container_width=True):
+                st.session_state["nav_page"] = "Strategic Brief & Deliverables"
+                st.session_state["sidebar_nav_page"] = "Strategic Brief & Deliverables"
                 st.rerun()
-    with col3:
-        with st.container(border=True):
-            st.markdown("**Deliverables**")
-            st.caption("SWOT, comps, scenarios, slide deck")
-            if st.button("Open deliverables", use_container_width=True):
-                st.session_state["nav_page"] = "Deliverables"
-                st.rerun()
-
-    st.info(
-        "AI-generated drafts only. Verify all figures and assumptions before client use.",
-        icon="ℹ️",
-    )
 
 
 def page_data_review():
     st.subheader("Financial Data Review")
+    st.caption("Upload your data to view KPIs, trend analysis, and an AI-generated analyst memo.")
 
     uploaded_file = st.file_uploader(
         "Upload financial or operational data (CSV or Excel)",
         type=["csv", "xlsx"],
-        help="Include columns such as revenue, costs, or margins for best results.",
     )
 
     if uploaded_file is not None:
@@ -319,14 +299,6 @@ def page_data_review():
     df = st.session_state["df"]
 
     if df is None:
-        st.markdown(
-            """
-            **Get started**
-            1. Upload a CSV or Excel file with time-series or tabular financial data.
-            2. Pick KPI columns and a chart metric.
-            3. Click **Run full analysis** for trends and an AI analyst memo.
-            """
-        )
         return
 
     numeric_columns = df.select_dtypes(include="number").columns.tolist()
@@ -343,7 +315,6 @@ def page_data_review():
             numeric_columns,
             default=default_kpis,
             max_selections=4,
-            help="Financial-sounding column names are suggested first.",
         )
 
         if kpi_cols:
@@ -426,7 +397,7 @@ Period-over-period trends (first row vs last row per metric):
 
 
 def page_strategic_brief():
-    st.subheader("Strategic Brief")
+    st.subheader("Strategic Brief & Deliverables")
     business_problem = render_brief_form(compact=False)
 
     if st.button("Generate consultant brief", type="primary", use_container_width=True):
@@ -471,16 +442,16 @@ Keep the response practical, structured, and business-focused.
         st.markdown("### Consultant report")
         render_markdown_report(st.session_state["consultant_report"], "consultant_brief.md")
 
-
-def page_deliverables():
+    st.divider()
     st.subheader("Deliverables")
-    st.caption("Uses context from **Strategic Brief**. Fill that form first for best results.")
+    render_deliverables_section()
 
-    render_brief_form(compact=True)
+
+def render_deliverables_section():
     ctx = get_brief_context()
 
     tab_swot, tab_comp, tab_fin, tab_slides = st.tabs(
-        ["SWOT", "Competitors", "Scenario model", "Slide deck"]
+        ["SWOT Analysis", "Competitor Analysis", "Scenario Planning", "Slide Deck"]
     )
 
     with tab_swot:
@@ -488,7 +459,7 @@ def page_deliverables():
             if client is None:
                 st.error("Set GROQ_API_KEY in your .env file.")
             elif not ctx["business_problem"].strip():
-                st.warning("Add a business problem on the Strategic Brief page first.")
+                st.warning("Enter a business question or problem first.")
             else:
                 swot_prompt = f"""
 You are a junior business consultant.
@@ -528,7 +499,7 @@ Be specific and practical.
             elif not st.session_state.get("competitors", "").strip():
                 st.warning("Enter at least one competitor.")
             elif not ctx["business_problem"].strip():
-                st.warning("Add a business problem on the Strategic Brief page first.")
+                st.warning("Enter a business question or problem first.")
             else:
                 competitor_prompt = f"""
 You are a junior business consultant.
@@ -588,7 +559,7 @@ Use these headers:
             if client is None:
                 st.error("Set GROQ_API_KEY in your .env file.")
             elif not ctx["business_problem"].strip():
-                st.warning("Add a business problem on the Strategic Brief page first.")
+                st.warning("Enter a business question or problem first.")
             else:
                 slide_prompt = f"""
 You are a management consultant preparing a strategy deck.
@@ -666,22 +637,37 @@ st.markdown(
 init_session_state()
 client = get_client()
 
+if "nav_page" not in st.session_state:
+    st.session_state["nav_page"] = "Home"
+if "sidebar_nav_page" not in st.session_state:
+    st.session_state["sidebar_nav_page"] = st.session_state["nav_page"]
+
+_legacy_pages = {
+    "Strategic Brief": "Strategic Brief & Deliverables",
+    "Deliverables": "Strategic Brief & Deliverables",
+}
+if st.session_state["nav_page"] in _legacy_pages:
+    st.session_state["nav_page"] = _legacy_pages[st.session_state["nav_page"]]
+if st.session_state["sidebar_nav_page"] in _legacy_pages:
+    st.session_state["sidebar_nav_page"] = _legacy_pages[st.session_state["sidebar_nav_page"]]
+
+
+def sync_from_sidebar():
+    st.session_state["nav_page"] = st.session_state["sidebar_nav_page"]
+
+
+st.session_state["sidebar_nav_page"] = st.session_state["nav_page"]
+
 with st.sidebar:
     st.title("Junior Analyst Copilot")
-    st.caption("AI-assisted financial & strategy analysis")
 
-    if "nav_page" not in st.session_state:
-        st.session_state["nav_page"] = "Home"
-
-    page = st.radio(
+    st.radio(
         "Navigate",
         PAGES,
-        index=PAGES.index(st.session_state["nav_page"])
-        if st.session_state["nav_page"] in PAGES
-        else 0,
+        key="sidebar_nav_page",
+        on_change=sync_from_sidebar,
         label_visibility="collapsed",
     )
-    st.session_state["nav_page"] = page
 
     st.divider()
     if client is None:
@@ -695,13 +681,12 @@ with st.sidebar:
         st.rerun()
 
 st.title("Junior Analyst Copilot")
-st.caption("Upload data · Generate memos · Export deliverables")
+
+page = st.session_state["nav_page"]
 
 if page == "Home":
     page_home()
 elif page == "Financial Data Review":
     page_data_review()
-elif page == "Strategic Brief":
+elif page == "Strategic Brief & Deliverables":
     page_strategic_brief()
-elif page == "Deliverables":
-    page_deliverables()
